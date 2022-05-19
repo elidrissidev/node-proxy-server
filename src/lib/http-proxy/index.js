@@ -16,8 +16,14 @@ export class HttpProxy {
         port: reqUrl.port,
         path: reqUrl.pathname,
         method: req.method,
+        headers: {
+          ...req.headers,
+        },
       },
       (proxyRes) => {
+        res.statusCode = proxyRes.statusCode
+        res.statusMessage = proxyRes.statusMessage
+
         // Copy all target response headers to client response
         Object.entries(proxyRes.headers).forEach(([key, value]) => {
           res.setHeader(key, value)
