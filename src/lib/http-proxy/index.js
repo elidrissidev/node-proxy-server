@@ -8,12 +8,14 @@ export class HttpProxy {
    * @param {http.ServerResponse} res
    */
   handleRequest(req, res) {
+    const reqUrl = new URL(req.url, `http://${req.headers.host}`)
+
     const proxyReq = http.request(
       {
-        hostname: 'openmage.localhost',
-        port: 80,
-        path: '/',
-        method: 'GET',
+        hostname: reqUrl.hostname,
+        port: reqUrl.port,
+        path: reqUrl.pathname,
+        method: req.method,
       },
       (proxyRes) => {
         // Stream response from target back to client
