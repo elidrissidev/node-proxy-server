@@ -18,6 +18,10 @@ export class HttpProxy {
         method: req.method,
       },
       (proxyRes) => {
+        // Copy all target response headers to client response
+        Object.entries(proxyRes.headers).forEach(([key, value]) => {
+          res.setHeader(key, value)
+        })
         // Stream response from target back to client
         proxyRes.pipe(res)
       }
