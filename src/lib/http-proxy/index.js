@@ -5,9 +5,10 @@ export class HttpProxy {
    * @typedef {{
    *   target: URL|string,
    *   middlewares: {
-   *     request?: ((req: http.IncomingMessage) => boolean)[],
+   *     request?: ((req: http.IncomingMessage, res: http.ServerResponse, options: http.RequestOptions) => boolean)[],
    *   }
    * }} HttpProxyOptions
+   * @type {HttpProxyOptions}
    */
   #options = {}
 
@@ -16,6 +17,12 @@ export class HttpProxy {
    */
   constructor(options = {}) {
     this.#options = this.#validateOptions(options)
+
+    // Add default middlewares
+    this.#options.middlewares.request.push(
+      // sendRequest should be the last middleware in the chain
+      this.#sendRequest
+    )
   }
 
   /**
@@ -76,20 +83,14 @@ export class HttpProxy {
   }
 
   /**
-   * Handle proxying client request to target
+   * Performs the actual proxying of the request to the target server
    *
    * @param {http.IncomingMessage} req
    * @param {http.ServerResponse} res
+   * @param {http.RequestOptions} options
+   * @returns {boolean}
    */
-  handleRequest(req, res) {
-    const options = this.#getRequestOptions(req)
-
-    for (let middleware of this.#options.middlewares.request) {
-      if (middleware(req)) {
-        break
-      }
-    }
-
+  #sendRequest(req, res, options) {
     const proxyReq = http.request(options, (proxyRes) => {
       res.statusCode = proxyRes.statusCode
       res.statusMessage = proxyRes.statusMessage
@@ -104,5 +105,25 @@ export class HttpProxy {
 
     // Stream request from client to target
     req.pipe(proxyReq)
+
+    return true
+  }
+
+  /**
+   * Handle proxying client request to target
+   *
+   * @param {http.IncomingMessage} req
+   * @param {http.ServerResponse} res
+   */
+  handleRequest(req, res) {
+    const options = this.#getRequestOptions(req)
+
+    for (let middleware of this.#options.middlewares.request) {
+      // A middleware function can return a truthy value to break out of the loop
+      // and stop middlewares further in the chain from running
+      if (middleware(req, res, options)) {
+        break
+      }
+    }
   }
 }
