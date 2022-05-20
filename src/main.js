@@ -4,6 +4,13 @@ import { HttpProxy } from './lib/http-proxy/index.js'
 
 const proxy = new HttpProxy({
   target: 'http://localhost:8080/',
+  middlewares: {
+    request: [
+      function logger(req) {
+        console.log(req.method, req.url)
+      },
+    ],
+  },
 })
 
 const proxyServer = http.createServer((req, res) => {

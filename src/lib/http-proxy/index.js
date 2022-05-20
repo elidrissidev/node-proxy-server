@@ -1,15 +1,21 @@
 import http from 'node:http'
 
-/**
- * @property {HttpProxyOptions} options
- */
 export class HttpProxy {
   /**
-   * @typedef {{ target: URL|string }} HttpProxyOptions
+   * @typedef {{
+   *   target: URL|string,
+   *   middlewares: {
+   *     request?: ((req: http.IncomingMessage) => boolean)[],
+   *   }
+   * }} HttpProxyOptions
+   */
+  #options = {}
+
+  /**
    * @param {HttpProxyOptions} options
    */
   constructor(options = {}) {
-    this.options = this.#validateOptions(options)
+    this.#options = this.#validateOptions(options)
   }
 
   /**
@@ -29,6 +35,16 @@ export class HttpProxy {
         ? new URL(options.target)
         : options.target
 
+    // Setup middlewares
+    if (!options.middlewares) {
+      options.middlewares = {
+        request: [],
+      }
+    }
+    if (!Array.isArray(options.middlewares.request)) {
+      options.middlewares.request = []
+    }
+
     return options
   }
 
@@ -40,7 +56,7 @@ export class HttpProxy {
    */
   #getRequestOptions(req) {
     const requestUrl = new URL(req.url, `http://${req.headers.host}`)
-    const { target } = this.options
+    const { target } = this.#options
     return {
       hostname: target.hostname,
       port: target.port,
@@ -67,6 +83,13 @@ export class HttpProxy {
    */
   handleRequest(req, res) {
     const options = this.#getRequestOptions(req)
+
+    for (let middleware of this.#options.middlewares.request) {
+      if (middleware(req)) {
+        break
+      }
+    }
+
     const proxyReq = http.request(options, (proxyRes) => {
       res.statusCode = proxyRes.statusCode
       res.statusMessage = proxyRes.statusMessage
