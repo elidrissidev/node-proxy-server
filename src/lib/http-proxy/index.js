@@ -67,7 +67,7 @@ export class HttpProxy {
     return {
       hostname: target.hostname,
       port: target.port,
-      path: requestUrl.pathname,
+      path: `${requestUrl.pathname}${requestUrl.search}`,
       method: req.method,
       headers: {
         ...req.headers,
