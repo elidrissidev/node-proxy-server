@@ -12,7 +12,10 @@ export function rewriteLocationHeader(req, res) {
   }
 
   // Replace the Location URL host with the one from the request
-  const locationUrl = new URL(res.getHeader('location'))
+  const locationUrl = new URL(
+    res.getHeader('location'),
+    `http://${req.headers.host}`
+  )
   locationUrl.host = req.headers.host
 
   res.setHeader('location', locationUrl.toString())
