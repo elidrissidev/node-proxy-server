@@ -4,7 +4,7 @@ import { HttpProxy } from './lib/http-proxy/index.js'
 
 const proxy = new HttpProxy({
   target: 'http://openmage.localhost/',
-  autoDetectTarget: true,
+  timeout: 5000,
   middlewares: {
     response: [
       function logger(req, res) {

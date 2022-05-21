@@ -11,6 +11,7 @@ export class HttpProxy {
    * @typedef {{
    *   target: URL|string,
    *   autoDetectTarget?: boolean,
+   *   timeout?: number,
    *   middlewares?: {
    *     request?: ((req: http.IncomingMessage, res: http.ServerResponse, options: http.RequestOptions) => boolean)[],
    *     response?: ((req: http.IncomingMessage, res: http.ServerResponse, options: http.RequestOptions) => boolean)[],
@@ -58,6 +59,10 @@ export class HttpProxy {
         ? new URL(options.target)
         : options.target
 
+    if (typeof options.timeout !== 'number') {
+      options.timeout = +options.timeout
+    }
+
     // Setup middlewares
     if (!options.middlewares) {
       options.middlewares = {
@@ -95,6 +100,7 @@ export class HttpProxy {
       path: `${requestUrl.pathname}${requestUrl.search}`,
       protocol: requestUrl.protocol,
       method: req.method,
+      timeout: this.#options.timeout,
       headers: {
         ...req.headers,
         host: autoDetectTarget ? requestUrl.host : target.host,
@@ -135,6 +141,21 @@ export class HttpProxy {
 
     // Stream request from client to target
     req.pipe(proxyReq)
+
+    // Set socket timeout handler
+    proxyReq.on('timeout', () => {
+      // Abort the request
+      proxyReq.destroy(new Error('Request timed out'))
+
+      // Send 504 Gateway Timeout error to the client
+      res.writeHead(504)
+      res.end()
+    })
+
+    // Listen for errors and log them to the console
+    proxyReq.on('error', (err) => {
+      console.error('Error:', err.message)
+    })
 
     return true
   }
