@@ -6,6 +6,7 @@ export class HttpProxy {
    *   target: URL|string,
    *   middlewares: {
    *     request?: ((req: http.IncomingMessage, res: http.ServerResponse, options: http.RequestOptions) => boolean)[],
+   *     response?: ((req: http.IncomingMessage, res: http.ServerResponse, options: http.RequestOptions) => boolean)[],
    *   }
    * }} HttpProxyOptions
    * @type {HttpProxyOptions}
@@ -46,10 +47,14 @@ export class HttpProxy {
     if (!options.middlewares) {
       options.middlewares = {
         request: [],
+        response: [],
       }
     }
     if (!Array.isArray(options.middlewares.request)) {
       options.middlewares.request = []
+    }
+    if (!Array.isArray(options.middlewares.response)) {
+      options.middlewares.response = []
     }
 
     return options
@@ -84,14 +89,15 @@ export class HttpProxy {
   }
 
   /**
-   * Performs the actual proxying of the request to the target server
+   * Performs the actual proxying of the request to the target server.
+   * Note: This method needs to be an arrow function to have access to `this.#options`.
    *
    * @param {http.IncomingMessage} req
    * @param {http.ServerResponse} res
    * @param {http.RequestOptions} options
    * @returns {boolean}
    */
-  #sendRequest(req, res, options) {
+  #sendRequest = (req, res, options) => {
     const proxyReq = http.request(options, (proxyRes) => {
       res.statusCode = proxyRes.statusCode
       res.statusMessage = proxyRes.statusMessage
@@ -100,6 +106,15 @@ export class HttpProxy {
       Object.entries(proxyRes.headers).forEach(([key, value]) => {
         res.setHeader(key, value)
       })
+
+      for (let middleware of this.#options.middlewares.response) {
+        // A middleware function can return a truthy value to break out of the loop
+        // and stop middlewares further in the chain from running
+        if (middleware(req, res, options)) {
+          break
+        }
+      }
+
       // Stream response from target back to client
       proxyRes.pipe(res)
     })

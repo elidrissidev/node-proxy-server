@@ -3,11 +3,11 @@ import http from 'node:http'
 import { HttpProxy } from './lib/http-proxy/index.js'
 
 const proxy = new HttpProxy({
-  target: 'http://localhost:8080/',
+  target: 'http://phpmyadmin.localhost/',
   middlewares: {
-    request: [
-      function logger(req) {
-        console.log(req.method, req.url)
+    response: [
+      function logger(req, res) {
+        console.log(req.method, req.url, res.statusCode)
       },
     ],
   },
