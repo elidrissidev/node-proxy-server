@@ -10,7 +10,8 @@ export class HttpProxy {
   /**
    * @typedef {{
    *   target: URL|string,
-   *   middlewares: {
+   *   autoDetectTarget?: boolean,
+   *   middlewares?: {
    *     request?: ((req: http.IncomingMessage, res: http.ServerResponse, options: http.RequestOptions) => boolean)[],
    *     response?: ((req: http.IncomingMessage, res: http.ServerResponse, options: http.RequestOptions) => boolean)[],
    *   }
@@ -44,8 +45,11 @@ export class HttpProxy {
    * @returns {HttpProxyOptions}
    */
   #validateOptions(options) {
-    if (!options.target) {
-      throw new Error('Target URL is required')
+    // Either `target` or `autoDetectTarget` option must be set
+    if (!options.target && options.autoDetectTarget === undefined) {
+      throw new TypeError(
+        'Either `target` or `autoDetectTarget` option must be set'
+      )
     }
 
     // Convert target into a URL object if it's a string
@@ -79,16 +83,21 @@ export class HttpProxy {
    */
   #getRequestOptions(req) {
     const requestUrl = new URL(req.url, `http://${req.headers.host}`)
-    const { target } = this.#options
+    const { target, autoDetectTarget } = this.#options
+
+    // `autoDetectTarget` option allows infering host from Host request header for
+    // when you wish to proxy all device traffic. e.g: when setting up the proxy in OS settings.
+    //
+    // Note: `autoDetectTarget` option takes precedence over `target`
     return {
-      hostname: target.hostname,
-      port: target.port,
+      hostname: autoDetectTarget ? requestUrl.hostname : target.hostname,
+      port: autoDetectTarget ? requestUrl.port : target.port,
       path: `${requestUrl.pathname}${requestUrl.search}`,
       protocol: requestUrl.protocol,
       method: req.method,
       headers: {
         ...req.headers,
-        host: target.hostname,
+        host: autoDetectTarget ? requestUrl.host : target.host,
       },
     }
   }
