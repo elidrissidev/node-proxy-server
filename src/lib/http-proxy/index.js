@@ -3,6 +3,7 @@ import http from 'node:http'
 import {
   addForwardingHeaders,
   rewriteLocationHeader,
+  rewriteSetCookieHeader,
 } from './middlewares/request.js'
 
 export class HttpProxy {
@@ -30,7 +31,10 @@ export class HttpProxy {
       // sendRequest should be the last middleware in the chain
       this.#sendRequest
     )
-    this.#options.middlewares.response.push(rewriteLocationHeader)
+    this.#options.middlewares.response.push(
+      rewriteLocationHeader,
+      rewriteSetCookieHeader
+    )
   }
 
   /**

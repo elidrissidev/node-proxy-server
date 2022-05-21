@@ -3,7 +3,7 @@ import http from 'node:http'
 import { HttpProxy } from './lib/http-proxy/index.js'
 
 const proxy = new HttpProxy({
-  target: 'http://phpmyadmin.localhost/',
+  target: 'http://openmage.localhost/',
   middlewares: {
     response: [
       function logger(req, res) {
