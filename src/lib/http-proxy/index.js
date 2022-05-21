@@ -1,10 +1,10 @@
 import http from 'node:http'
 
+import { addForwardingHeaders } from './middlewares/request.js'
 import {
-  addForwardingHeaders,
   rewriteLocationHeader,
   rewriteSetCookieHeader,
-} from './middlewares/request.js'
+} from './middlewares/response.js'
 
 export class HttpProxy {
   /**
