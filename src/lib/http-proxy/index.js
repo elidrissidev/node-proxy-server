@@ -11,6 +11,7 @@ export class HttpProxy {
    * @typedef {{
    *   target: URL|string,
    *   autoDetectTarget?: boolean,
+   *   includeForwardingHeaders?: boolean,
    *   timeout?: number,
    *   middlewares?: {
    *     request?: ((req: http.IncomingMessage, res: http.ServerResponse, reqOptions: http.RequestOptions, proxyOptions: HttpProxyOptions) => boolean)[],
@@ -54,6 +55,11 @@ export class HttpProxy {
       typeof options.target === 'string'
         ? new URL(options.target)
         : options.target
+
+    // Add 'X-Forwarding-*' headers to request by default
+    if (options.includeForwardingHeaders === undefined) {
+      options.includeForwardingHeaders = true
+    }
 
     if (typeof options.timeout !== 'number') {
       options.timeout = +options.timeout
