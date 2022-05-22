@@ -12,28 +12,32 @@ export class HttpProxy {
    *   target: URL|string,
    *   autoDetectTarget?: boolean,
    *   includeForwardingHeaders?: boolean,
-   *   timeout?: number,
-   *   middlewares?: {
-   *     request?: ((req: http.IncomingMessage, res: http.ServerResponse, reqOptions: http.RequestOptions, proxyOptions: HttpProxyOptions) => boolean)[],
-   *     response?: ((req: http.IncomingMessage, res: http.ServerResponse, reqOptions: http.RequestOptions, proxyOptions: HttpProxyOptions) => boolean)[],
-   *   }
+   *   timeout?: number
    * }} HttpProxyOptions
    * @type {HttpProxyOptions}
    */
   #options = {}
 
   /**
+   * @typedef {(
+   *   req: http.IncomingMessage,
+   *   res: http.ServerResponse,
+   *   reqOptions: http.RequestOptions,
+   *   proxyOptions: HttpProxyOptions
+   * ) => boolean} MiddlewareFunction
+   * @typedef {{ request: MiddlewareFunction[], response: MiddlewareFunction[] }} HttpProxyMiddlewares
+   * @type {HttpProxyMiddlewares}
+   */
+  #middlewares = {
+    request: [addForwardingHeaders],
+    response: [rewriteLocationHeader, rewriteSetCookieHeader],
+  }
+
+  /**
    * @param {HttpProxyOptions} options
    */
   constructor(options = {}) {
     this.#options = this.#validateOptions(options)
-
-    // Add default middlewares
-    this.#options.middlewares.request.push(addForwardingHeaders)
-    this.#options.middlewares.response.push(
-      rewriteLocationHeader,
-      rewriteSetCookieHeader
-    )
   }
 
   /**
@@ -63,20 +67,6 @@ export class HttpProxy {
 
     if (typeof options.timeout !== 'number') {
       options.timeout = +options.timeout
-    }
-
-    // Setup middlewares
-    if (!options.middlewares) {
-      options.middlewares = {
-        request: [],
-        response: [],
-      }
-    }
-    if (!Array.isArray(options.middlewares.request)) {
-      options.middlewares.request = []
-    }
-    if (!Array.isArray(options.middlewares.response)) {
-      options.middlewares.response = []
     }
 
     return options
@@ -128,13 +118,11 @@ export class HttpProxy {
         res.setHeader(key, value)
       })
 
-      // Create a copy of proxy options object that will be passed to middlewares
-      // and remove `middlewares` property. This can be used to decide on whether to perform
-      // an action based on configuration.
+      // Create a copy of proxy options object that will be passed to middlewares.
+      // This can be used to decide on whether to perform an action based on configuration.
       const proxyOptions = { ...this.#options }
-      delete proxyOptions.middlewares
 
-      for (let middleware of this.#options.middlewares.response) {
+      for (let middleware of this.#middlewares.response) {
         // A middleware function can return a truthy value to break out of the loop
         // and stop middlewares further in the chain from running
         if (middleware(req, res, reqOptions, proxyOptions)) {
@@ -168,6 +156,24 @@ export class HttpProxy {
   }
 
   /**
+   * Add a proxy request middleware
+   *
+   * @param {MiddlewareFunction[]} middlewares
+   */
+  addRequestMiddlewares(...middlewares) {
+    this.#middlewares.request.push(...middlewares)
+  }
+
+  /**
+   * Add a proxy response middleware
+   *
+   * @param {MiddlewareFunction[]} middlewares
+   */
+  addResponseMiddlewares(...middlewares) {
+    this.#middlewares.response.push(...middlewares)
+  }
+
+  /**
    * Handle proxying client request to target
    *
    * @param {http.IncomingMessage} req
@@ -176,13 +182,11 @@ export class HttpProxy {
   handleRequest(req, res) {
     const reqOptions = this.#getRequestOptions(req)
 
-    // Create a copy of proxy options object that will be passed to middlewares
-    // and remove `middlewares` property. This can be used to decide on whether to perform
-    // an action based on configuration.
+    // Create a copy of proxy options object that will be passed to middlewares.
+    // This can be used to decide on whether to perform an action based on configuration.
     const proxyOptions = { ...this.#options }
-    delete proxyOptions.middlewares
 
-    for (let middleware of this.#options.middlewares.request) {
+    for (let middleware of this.#middlewares.request) {
       // A middleware function can return a truthy value to break out of the loop
       // and stop middlewares further in the chain from running
       //

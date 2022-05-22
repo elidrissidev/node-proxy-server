@@ -6,13 +6,10 @@ const proxy = new HttpProxy({
   target: 'http://openmage.localhost/',
   includeForwardingHeaders: false,
   timeout: 5000,
-  middlewares: {
-    response: [
-      function logger(req, res) {
-        console.log(req.method, req.url, res.statusCode)
-      },
-    ],
-  },
+})
+
+proxy.addResponseMiddlewares((req, res) => {
+  console.log(req.method, req.url, res.statusCode)
 })
 
 const proxyServer = http.createServer((req, res) => {
