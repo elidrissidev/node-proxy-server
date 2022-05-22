@@ -76,11 +76,12 @@ export class HttpProxy {
    * Build target request options from client request
    *
    * @param {http.IncomingMessage} req
+   * @param {HttpProxyOptions} proxyOptions
    * @returns {http.RequestOptions}
    */
-  #getRequestOptions(req) {
+  #getRequestOptions(req, proxyOptions) {
     const requestUrl = new URL(req.url, `http://${req.headers.host}`)
-    const { target, autoDetectTarget } = this.#options
+    const { target, autoDetectTarget, timeout } = proxyOptions
 
     // `autoDetectTarget` option allows infering host from Host request header for
     // when you wish to proxy all device traffic. e.g: when setting up the proxy in OS settings.
@@ -92,7 +93,7 @@ export class HttpProxy {
       path: `${requestUrl.pathname}${requestUrl.search}`,
       protocol: requestUrl.protocol,
       method: req.method,
-      timeout: this.#options.timeout,
+      timeout: timeout,
       headers: {
         ...req.headers,
         host: autoDetectTarget ? requestUrl.host : target.host,
@@ -106,9 +107,10 @@ export class HttpProxy {
    * @param {http.IncomingMessage} req
    * @param {http.ServerResponse} res
    * @param {http.RequestOptions} reqOptions
+   * @param {HttpProxyOptions} proxyOptions
    * @returns {boolean}
    */
-  #sendRequest(req, res, reqOptions) {
+  #sendRequest(req, res, reqOptions, proxyOptions) {
     const proxyReq = http.request(reqOptions, (proxyRes) => {
       res.statusCode = proxyRes.statusCode
       res.statusMessage = proxyRes.statusMessage
@@ -117,10 +119,6 @@ export class HttpProxy {
       Object.entries(proxyRes.headers).forEach(([key, value]) => {
         res.setHeader(key, value)
       })
-
-      // Create a copy of proxy options object that will be passed to middlewares.
-      // This can be used to decide on whether to perform an action based on configuration.
-      const proxyOptions = { ...this.#options }
 
       for (let middleware of this.#middlewares.response) {
         // A middleware function can return a truthy value to break out of the loop
@@ -178,13 +176,17 @@ export class HttpProxy {
    *
    * @param {http.IncomingMessage} req
    * @param {http.ServerResponse} res
+   * @param {HttpProxyOptions} overrideProxyOptions
    */
-  handleRequest(req, res) {
-    const reqOptions = this.#getRequestOptions(req)
+  handleRequest(req, res, overrideProxyOptions = {}) {
+    // Create a copy of proxy options object with per-request overrides.
+    // This can be used to override some options based on request variables like host for example.
+    const proxyOptions = {
+      ...this.#options,
+      ...overrideProxyOptions,
+    }
 
-    // Create a copy of proxy options object that will be passed to middlewares.
-    // This can be used to decide on whether to perform an action based on configuration.
-    const proxyOptions = { ...this.#options }
+    const reqOptions = this.#getRequestOptions(req, proxyOptions)
 
     for (let middleware of this.#middlewares.request) {
       // A middleware function can return a truthy value to break out of the loop
@@ -198,6 +200,6 @@ export class HttpProxy {
     }
 
     // Send the request to target
-    this.#sendRequest(req, res, reqOptions)
+    this.#sendRequest(req, res, reqOptions, proxyOptions)
   }
 }
