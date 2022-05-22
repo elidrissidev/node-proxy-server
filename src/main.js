@@ -3,8 +3,7 @@ import http from 'node:http'
 import { HttpProxy } from './lib/http-proxy/index.js'
 
 const proxy = new HttpProxy({
-  target: 'http://openmage.localhost/',
-  includeForwardingHeaders: false,
+  autoDetectTarget: true,
   timeout: 5000,
 })
 
@@ -17,3 +16,12 @@ const proxyServer = http.createServer((req, res) => {
 })
 
 proxyServer.listen(process.env.PORT || 3000)
+
+// Target server for testing
+const targetServer = http.createServer((req, res) => {
+  res.writeHead(200, { 'content-type': 'application/json' })
+  res.write(JSON.stringify(req.headers, null, 2))
+  res.end()
+})
+
+targetServer.listen(8080)
