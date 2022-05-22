@@ -3,7 +3,6 @@
  *
  * @param {import('http').IncomingMessage} req
  * @param {import('http').ServerResponse} res
- * @param {import('http').RequestOptions} options
  */
 export function rewriteLocationHeader(req, res) {
   // Response does not contain a Location header, so there's nothing to do

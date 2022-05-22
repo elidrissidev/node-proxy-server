@@ -5,11 +5,11 @@
  *
  * @param {import('http').IncomingMessage} req
  * @param {import('http').ServerResponse} res
- * @param {import('http').RequestOptions} options
+ * @param {import('http').RequestOptions} reqOptions
  */
-export function addForwardingHeaders(req, res, options) {
-  options.headers['x-forwarded-for'] = req.socket.remoteAddress
-  options.headers['x-forwarded-host'] = options.hostname
-  options.headers['x-forwarded-port'] = options.port
-  options.headers['x-forwarded-proto'] = options.protocol.replace(':', '')
+export function addForwardingHeaders(req, res, reqOptions) {
+  reqOptions.headers['x-forwarded-for'] = req.socket.remoteAddress
+  reqOptions.headers['x-forwarded-host'] = reqOptions.hostname
+  reqOptions.headers['x-forwarded-port'] = reqOptions.port
+  reqOptions.headers['x-forwarded-proto'] = reqOptions.protocol.replace(':', '')
 }

@@ -13,8 +13,8 @@ export class HttpProxy {
    *   autoDetectTarget?: boolean,
    *   timeout?: number,
    *   middlewares?: {
-   *     request?: ((req: http.IncomingMessage, res: http.ServerResponse, options: http.RequestOptions) => boolean)[],
-   *     response?: ((req: http.IncomingMessage, res: http.ServerResponse, options: http.RequestOptions) => boolean)[],
+   *     request?: ((req: http.IncomingMessage, res: http.ServerResponse, reqOptions: http.RequestOptions, proxyOptions: HttpProxyOptions) => boolean)[],
+   *     response?: ((req: http.IncomingMessage, res: http.ServerResponse, reqOptions: http.RequestOptions, proxyOptions: HttpProxyOptions) => boolean)[],
    *   }
    * }} HttpProxyOptions
    * @type {HttpProxyOptions}
@@ -109,11 +109,11 @@ export class HttpProxy {
    *
    * @param {http.IncomingMessage} req
    * @param {http.ServerResponse} res
-   * @param {http.RequestOptions} options
+   * @param {http.RequestOptions} reqOptions
    * @returns {boolean}
    */
-  #sendRequest(req, res, options) {
-    const proxyReq = http.request(options, (proxyRes) => {
+  #sendRequest(req, res, reqOptions) {
+    const proxyReq = http.request(reqOptions, (proxyRes) => {
       res.statusCode = proxyRes.statusCode
       res.statusMessage = proxyRes.statusMessage
 
@@ -122,10 +122,16 @@ export class HttpProxy {
         res.setHeader(key, value)
       })
 
+      // Create a copy of proxy options object that will be passed to middlewares
+      // and remove `middlewares` property. This can be used to decide on whether to perform
+      // an action based on configuration.
+      const proxyOptions = { ...this.#options }
+      delete proxyOptions.middlewares
+
       for (let middleware of this.#options.middlewares.response) {
         // A middleware function can return a truthy value to break out of the loop
         // and stop middlewares further in the chain from running
-        if (middleware(req, res, options)) {
+        if (middleware(req, res, reqOptions, proxyOptions)) {
           break
         }
       }
@@ -162,7 +168,13 @@ export class HttpProxy {
    * @param {http.ServerResponse} res
    */
   handleRequest(req, res) {
-    const options = this.#getRequestOptions(req)
+    const reqOptions = this.#getRequestOptions(req)
+
+    // Create a copy of proxy options object that will be passed to middlewares
+    // and remove `middlewares` property. This can be used to decide on whether to perform
+    // an action based on configuration.
+    const proxyOptions = { ...this.#options }
+    delete proxyOptions.middlewares
 
     for (let middleware of this.#options.middlewares.request) {
       // A middleware function can return a truthy value to break out of the loop
@@ -170,12 +182,12 @@ export class HttpProxy {
       //
       // Note: request middlewares that return true must handle sending the response
       // back to the client (i.e. calling res.end()).
-      if (middleware(req, res, options)) {
+      if (middleware(req, res, reqOptions, proxyOptions)) {
         return
       }
     }
 
     // Send the request to target
-    this.#sendRequest(req, res, options)
+    this.#sendRequest(req, res, reqOptions)
   }
 }
