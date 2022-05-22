@@ -147,7 +147,8 @@ export class HttpProxy {
 
     // Listen for errors and log them to the console
     proxyReq.on('error', (err) => {
-      console.error('Error:', err.message)
+      // Print errors with a red text color
+      console.error('\x1b[31m', 'Error:', err.message)
     })
 
     return true
