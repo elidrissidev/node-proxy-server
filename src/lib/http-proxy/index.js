@@ -43,7 +43,7 @@ export class HttpProxy {
    */
   #validateOptions(options) {
     // Either `target` or `autoDetectTarget` option must be set
-    if (!options.target && options.autoDetectTarget === undefined) {
+    if (!options.target && !options.autoDetectTarget) {
       throw new TypeError(
         'Either `target` or `autoDetectTarget` option must be set'
       )
