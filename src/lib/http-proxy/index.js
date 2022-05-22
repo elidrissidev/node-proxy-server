@@ -28,11 +28,7 @@ export class HttpProxy {
     this.#options = this.#validateOptions(options)
 
     // Add default middlewares
-    this.#options.middlewares.request.push(
-      addForwardingHeaders,
-      // sendRequest should be the last middleware in the chain
-      this.#sendRequest
-    )
+    this.#options.middlewares.request.push(addForwardingHeaders)
     this.#options.middlewares.response.push(
       rewriteLocationHeader,
       rewriteSetCookieHeader
@@ -109,15 +105,14 @@ export class HttpProxy {
   }
 
   /**
-   * Performs the actual proxying of the request to the target server.
-   * Note: This method needs to be an arrow function to have access to `this.#options`.
+   * Performs the actual request to the target server.
    *
    * @param {http.IncomingMessage} req
    * @param {http.ServerResponse} res
    * @param {http.RequestOptions} options
    * @returns {boolean}
    */
-  #sendRequest = (req, res, options) => {
+  #sendRequest(req, res, options) {
     const proxyReq = http.request(options, (proxyRes) => {
       res.statusCode = proxyRes.statusCode
       res.statusMessage = proxyRes.statusMessage
@@ -172,9 +167,15 @@ export class HttpProxy {
     for (let middleware of this.#options.middlewares.request) {
       // A middleware function can return a truthy value to break out of the loop
       // and stop middlewares further in the chain from running
+      //
+      // Note: request middlewares that return true must handle sending the response
+      // back to the client (i.e. calling res.end()).
       if (middleware(req, res, options)) {
-        break
+        return
       }
     }
+
+    // Send the request to target
+    this.#sendRequest(req, res, options)
   }
 }
