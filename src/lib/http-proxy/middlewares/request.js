@@ -11,11 +11,7 @@
 export function addForwardingHeaders(req, res, reqOptions, proxyOptions) {
   if (proxyOptions.includeForwardingHeaders) {
     reqOptions.headers['x-forwarded-for'] = req.socket.remoteAddress
-    reqOptions.headers['x-forwarded-host'] = reqOptions.hostname
-    reqOptions.headers['x-forwarded-port'] = reqOptions.port
-    reqOptions.headers['x-forwarded-proto'] = reqOptions.protocol.replace(
-      ':',
-      ''
-    )
+    reqOptions.headers['x-forwarded-host'] = req.headers.host
+    reqOptions.headers['x-forwarded-proto'] = 'http'
   }
 }
